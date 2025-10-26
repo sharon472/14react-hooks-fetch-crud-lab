@@ -1,61 +1,70 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import AdminNavBar from "./AdminNavBar";
-import QuestionForm from "./QuestionForm";
 import QuestionList from "./QuestionList";
+import QuestionForm from "./QuestionForm";
 
 function App() {
-  const [page, setPage] = useState("List");
   const [questions, setQuestions] = useState([]);
+  const [page, setPage] = useState("List");
 
-  // ✅ Fetch questions from the server when app loads
+  // DELIVERABLE 1: GET /questions
   useEffect(() => {
-    fetch("http://localhost:4000/questions")
+    // Use AbortController for cleanup (Best Practice)
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    fetch("http://localhost:4000/questions", { signal })
       .then((res) => res.json())
       .then((data) => setQuestions(data))
-      .catch((err) => console.error("Error fetching questions:", err));
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
+            console.error('Fetch error:', error);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
-  // ✅ Add new question (POST)
+  // Handler for POST
   function handleAddQuestion(newQuestion) {
     setQuestions([...questions, newQuestion]);
   }
 
-  // ✅ Delete question (DELETE)
+  // Handler for DELETE
   function handleDeleteQuestion(id) {
-    fetch(`http://localhost:4000/questions/${id}`, {
-      method: "DELETE",
-    })
-      .then(() => {
-        const updatedQuestions = questions.filter((q) => q.id !== id);
-        setQuestions(updatedQuestions);
-      })
-      .catch((err) => console.error("Error deleting question:", err));
+    setQuestions(questions.filter((q) => q.id !== id));
   }
 
-  // ✅ Update question (PATCH)
+  // Handler for PATCH (Crucial for the failing test)
   function handleUpdateQuestion(updatedQuestion) {
-    const updatedQuestions = questions.map((q) =>
+    // Immutaably replace the old question object with the new one
+    const updated = questions.map((q) =>
       q.id === updatedQuestion.id ? updatedQuestion : q
     );
-    setQuestions(updatedQuestions);
+    setQuestions(updated);
   }
 
-  return (
-    <main>
-      <AdminNavBar onChangePage={setPage} />
-
-      {page === "Form" ? (
-        // 🟢 Pass the add function to the form
-        <QuestionForm onAddQuestion={handleAddQuestion} />
-      ) : (
-        // 🟢 Pass questions + delete + update handlers
+  function renderPage() {
+    if (page === "Form") {
+      return <QuestionForm onAddQuestion={handleAddQuestion} />;
+    } else if (page === "List") {
+      return (
         <QuestionList
           questions={questions}
           onDeleteQuestion={handleDeleteQuestion}
           onUpdateQuestion={handleUpdateQuestion}
         />
-      )}
-    </main>
+      );
+    }
+  }
+
+  return (
+    <div>
+      <AdminNavBar onChangePage={setPage} />
+      {renderPage()}
+    </div>
   );
 }
 

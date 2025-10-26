@@ -9,34 +9,40 @@ function QuestionItem({ question, onDeleteQuestion, onUpdateQuestion }) {
     }).then(() => onDeleteQuestion(id));
   }
 
-  function handleChange(e) {
-    const updatedIndex = parseInt(e.target.value);
+  function handleCorrectAnswerChange(e) {
+    const newCorrectIndex = parseInt(e.target.value, 10);
 
     fetch(`http://localhost:4000/questions/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ correctIndex: updatedIndex }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ correctIndex: newCorrectIndex }),
     })
-      .then((r) => r.json())
-      .then((updatedQuestion) => onUpdateQuestion(updatedQuestion));
+      .then((r) => r.json()) // ensure we parse the response
+      .then((updatedQuestion) => {
+        // make sure updatedQuestion has correctIndex set properly
+        onUpdateQuestion(updatedQuestion);
+      })
+      .catch((err) => console.error("PATCH failed:", err));
   }
-
-  const options = answers.map((answer, index) => (
-    <option key={index} value={index}>
-      {answer}
-    </option>
-  ));
 
   return (
     <li>
       <h4>Question {id}</h4>
-      <h5>Prompt: {prompt}</h5>
+      <p>{prompt}</p>
+
       <label>
         Correct Answer:
-        <select value={correctIndex} onChange={handleChange}>
-          {options}
+        <select value={correctIndex} onChange={handleCorrectAnswerChange}>
+          {answers.map((answer, index) => (
+            <option key={index} value={index}>
+              {answer || `choice ${index + 1}`}
+            </option>
+          ))}
         </select>
       </label>
+
       <button onClick={handleDeleteClick}>Delete Question</button>
     </li>
   );

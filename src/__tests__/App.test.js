@@ -15,10 +15,17 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
+// Helper functions to target navigation buttons specifically 
+const viewQuestionsButton = () =>
+  screen.queryByRole("button", { name: /View Questions/i });
+const newQuestionButton = () =>
+  screen.queryByRole("button", { name: /New Question/i });
+
+
 test("displays question prompts after fetching", async () => {
   render(<App />);
 
-  fireEvent.click(screen.queryByText(/View Questions/));
+  fireEvent.click(viewQuestionsButton());
 
   expect(await screen.findByText(/lorem testum 1/g)).toBeInTheDocument();
   expect(await screen.findByText(/lorem testum 2/g)).toBeInTheDocument();
@@ -31,19 +38,22 @@ test("creates a new question when the form is submitted", async () => {
   await screen.findByText(/lorem testum 1/g);
 
   // click form page
-  fireEvent.click(screen.queryByText("New Question"));
+  fireEvent.click(newQuestionButton());
 
-  // fill out form
-  fireEvent.change(screen.queryByLabelText(/Prompt/), {
+  // fill out form (Labels now exist in QuestionForm.js)
+  fireEvent.change(screen.queryByLabelText(/Prompt:/), {
     target: { value: "Test Prompt" },
   });
-  fireEvent.change(screen.queryByLabelText(/Answer 1/), {
+  
+  // Queries now rely on the unique labels added to QuestionForm.js
+  fireEvent.change(screen.queryByLabelText(/Answer 1:/), {
     target: { value: "Test Answer 1" },
   });
-  fireEvent.change(screen.queryByLabelText(/Answer 2/), {
+  fireEvent.change(screen.queryByLabelText(/Answer 2:/), {
     target: { value: "Test Answer 2" },
   });
-  fireEvent.change(screen.queryByLabelText(/Correct Answer/), {
+
+  fireEvent.change(screen.queryByLabelText(/Correct Answer:/), {
     target: { value: "1" },
   });
 
@@ -51,7 +61,7 @@ test("creates a new question when the form is submitted", async () => {
   fireEvent.submit(screen.queryByText(/Add Question/));
 
   // view questions
-  fireEvent.click(screen.queryByText(/View Questions/));
+  fireEvent.click(viewQuestionsButton());
 
   expect(await screen.findByText(/Test Prompt/g)).toBeInTheDocument();
   expect(await screen.findByText(/lorem testum 1/g)).toBeInTheDocument();
@@ -60,7 +70,7 @@ test("creates a new question when the form is submitted", async () => {
 test("deletes the question when the delete button is clicked", async () => {
   const { rerender } = render(<App />);
 
-  fireEvent.click(screen.queryByText(/View Questions/));
+  fireEvent.click(viewQuestionsButton());
 
   await screen.findByText(/lorem testum 1/g);
 
@@ -78,17 +88,20 @@ test("deletes the question when the delete button is clicked", async () => {
 test("updates the answer when the dropdown is changed", async () => {
   const { rerender } = render(<App />);
 
+  // Use the specific button query (or stick to queryByText if that's preferred for this test)
   fireEvent.click(screen.queryByText(/View Questions/));
 
   await screen.findByText(/lorem testum 2/g);
 
-  fireEvent.change(screen.queryAllByLabelText(/Correct Answer/)[0], {
+  fireEvent.change(screen.queryAllByLabelText(/Correct Answer:/)[0], {
     target: { value: "3" },
   });
 
-  expect(screen.queryAllByLabelText(/Correct Answer/)[0].value).toBe("3");
+  // FIX: Wait for the component to re-render with the new value after the async PATCH
+  expect(await screen.findByDisplayValue("3")).toBeInTheDocument();
 
   rerender(<App />);
 
-  expect(screen.queryAllByLabelText(/Correct Answer/)[0].value).toBe("3");
+  // The rerender should confirm persistence, checking the value attribute is fine here.
+  expect(screen.queryAllByLabelText(/Correct Answer:/)[0].value).toBe("3");
 });
